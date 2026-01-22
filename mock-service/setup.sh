@@ -46,15 +46,12 @@ echo -e "${GREEN}Backend is ready!${NC}"
 echo ""
 echo -e "${YELLOW}Step 3: Loading sample mock configurations...${NC}"
 
-# Load sample data via API
+# Load sample data via API using node script
 if [ -f "seed-data/sample-mocks.json" ]; then
-    # Read JSON array and post each mock
-    MOCKS=$(cat seed-data/sample-mocks.json)
-
-    # Use node to parse and post each mock
     node -e "
     const http = require('http');
-    const mocks = JSON.parse(\`$MOCKS\`);
+    const fs = require('fs');
+    const mocks = JSON.parse(fs.readFileSync('seed-data/sample-mocks.json', 'utf8'));
 
     async function postMock(mock) {
         return new Promise((resolve, reject) => {
