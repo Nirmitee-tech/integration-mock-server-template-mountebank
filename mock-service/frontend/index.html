@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mock Service Manager</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    header { background: #1a1a2e; color: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 24px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+    .btn-primary { background: #4361ee; color: white; }
+    .btn-primary:hover { background: #3651d4; }
+    .btn-success { background: #06d6a0; color: white; }
+    .btn-danger { background: #ef476f; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 16px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .card-body { padding: 20px; }
+    .mock-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #eee; }
+    .mock-item:last-child { border-bottom: none; }
+    .mock-info h3 { font-size: 16px; margin-bottom: 4px; }
+    .mock-info p { color: #666; font-size: 13px; }
+    .mock-meta { display: flex; gap: 16px; align-items: center; }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .badge-port { background: #e3f2fd; color: #1565c0; }
+    .badge-enabled { background: #e8f5e9; color: #2e7d32; }
+    .badge-disabled { background: #ffebee; color: #c62828; }
+    .badge-delay { background: #fff3e0; color: #e65100; }
+    .badge-webhook { background: #f3e5f5; color: #7b1fa2; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
+    .modal.active { display: flex; justify-content: center; align-items: flex-start; padding: 30px; }
+    .modal-content { background: white; border-radius: 8px; width: 100%; max-width: 1000px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: white; z-index: 10; }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; position: sticky; bottom: 0; background: white; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    .form-group textarea { font-family: 'Monaco', 'Menlo', monospace; min-height: 120px; }
+    .form-group small { color: #666; font-size: 12px; margin-top: 4px; display: block; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .stub-item { background: #f8f9fa; border-radius: 6px; padding: 16px; margin-bottom: 12px; border: 1px solid #e9ecef; }
+    .stub-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .stub-header h4 { font-size: 14px; color: #333; }
+    .stub-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
+    .actions { display: flex; gap: 8px; }
+    .empty-state { text-align: center; padding: 60px 20px; color: #666; }
+    .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab { padding: 12px 24px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-weight: 500; color: #666; }
+    .tab.active { border-bottom-color: #4361ee; color: #4361ee; }
+    .section-title { font-size: 16px; font-weight: 600; margin: 24px 0 12px 0; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+    .help-text { background: #e3f2fd; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
+    .help-text code { background: #bbdefb; padding: 2px 6px; border-radius: 3px; }
+    .status-bar { display: flex; gap: 20px; font-size: 13px; }
+    .status-item { display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-dot.green { background: #06d6a0; }
+    .status-dot.red { background: #ef476f; }
+    .collapsible { border: 1px solid #ddd; border-radius: 6px; margin-bottom: 12px; }
+    .collapsible-header { padding: 12px 16px; background: #f8f9fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+    .collapsible-body { padding: 16px; display: none; }
+    .collapsible.open .collapsible-body { display: block; }
+    .checkbox-group { display: flex; align-items: center; gap: 8px; }
+    .checkbox-group input { width: auto; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Mock Service Manager</h1>
+        <div class="status-bar" style="margin-top: 8px;">
+          <div class="status-item"><span class="status-dot" id="dbStatus"></span> Backend</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="syncAll()">Sync All</button>
+        <button class="btn btn-primary" onclick="openCreateModal()">+ New Mock</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Mock Configurations</h2>
+        <span id="mockCount">0 mocks</span>
+      </div>
+      <div id="mockList" class="card-body">
+        <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create/Edit Modal -->
+  <div id="mockModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">New Mock Configuration</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('basic')">Basic Info</div>
+          <div class="tab" onclick="switchTab('variables')">Variables</div>
+          <div class="tab" onclick="switchTab('stubs')">Stubs</div>
+          <div class="tab" onclick="switchTab('json')">JSON View</div>
+        </div>
+
+        <!-- Basic Tab -->
+        <div id="basicTab">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Name *</label>
+              <input type="text" id="mockName" placeholder="e.g., User Service API">
+            </div>
+            <div class="form-group">
+              <label>Port * (10080-10119)</label>
+              <input type="number" id="mockPort" placeholder="e.g., 10080" min="10080" max="10119">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Protocol</label>
+              <select id="mockProtocol">
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Enabled</label>
+              <select id="mockEnabled">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="mockDescription" placeholder="Brief description of this mock">
+          </div>
+        </div>
+
+        <!-- Variables Tab -->
+        <div id="variablesTab" style="display:none;">
+          <div class="help-text">
+            <strong>Global Variables:</strong> Define variables here that can be used in all stubs via Handlebars templates.
+            Use <code>{{vars.variableName}}</code> in your response templates.
+          </div>
+          <div class="form-group">
+            <label>Variables (JSON Object)</label>
+            <textarea id="mockVariables" placeholder='{"apiVersion": "v1", "environment": "test"}'></textarea>
+          </div>
+          <div class="form-group">
+            <label>Default Headers (JSON Object)</label>
+            <textarea id="mockDefaultHeaders" style="min-height: 80px;" placeholder='{"X-Api-Version": "1.0"}'></textarea>
+          </div>
+        </div>
+
+        <!-- Stubs Tab -->
+        <div id="stubsTab" style="display:none;">
+          <div class="help-text">
+            <strong>Handlebars Templates:</strong> Use <code>{{extracted.userId}}</code> for path/query/body params,
+            <code>{{vars.key}}</code> for global vars, <code>{{uuid}}</code>, <code>{{now}}</code>, <code>{{timestamp}}</code>,
+            <code>{{random 1 100}}</code> for dynamic values.
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3>Stubs</h3>
+            <button class="btn btn-sm btn-primary" onclick="addStub()">+ Add Stub</button>
+          </div>
+          <div id="stubsList"></div>
+        </div>
+
+        <!-- JSON Tab -->
+        <div id="jsonTab" style="display:none;">
+          <div class="form-group">
+            <label>Full Configuration (JSON)</label>
+            <textarea id="jsonConfig" style="min-height: 500px;"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveMock()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stub Editor Modal -->
+  <div id="stubModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit Stub</h2>
+        <button class="close-btn" onclick="closeStubModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Stub Name (Optional)</label>
+          <input type="text" id="stubName" placeholder="e.g., Get User By ID">
+        </div>
+
+        <div class="section-title">Predicates (Request Matching)</div>
+        <div class="form-group">
+          <label>Predicates (JSON Array)</label>
+          <textarea id="stubPredicates" placeholder='[{"matches": {"method": "GET", "path": "/api/users/.*"}}]'></textarea>
+          <small>Use "equals" for exact match, "matches" for regex, "contains" for partial match</small>
+        </div>
+
+        <div class="section-title">Extractors (Variables from Request)</div>
+        <div class="form-group">
+          <label>Path Pattern (Regex with capture groups)</label>
+          <input type="text" id="stubExtractorPath" placeholder="/api/users/(\d+)">
+          <small>Captured groups available as extracted.path1, path2, etc. Named groups: /api/users/(?&lt;userId&gt;\d+)</small>
+        </div>
+
+        <div class="section-title">Response</div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Status Code</label>
+            <input type="number" id="stubStatusCode" value="200">
+          </div>
+          <div class="form-group">
+            <label>Delay (ms)</label>
+            <input type="number" id="stubDelayMs" value="0" placeholder="0">
+            <small>Response delay in milliseconds</small>
+          </div>
+          <div class="form-group">
+            <label>Content-Type</label>
+            <input type="text" id="stubContentType" value="application/json">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Response Body Template (Handlebars)</label>
+          <textarea id="stubBodyTemplate" style="min-height: 180px;" placeholder='{
+  "userId": "{{extracted.path1}}",
+  "name": "User {{extracted.path1}}",
+  "requestId": "{{uuid}}",
+  "timestamp": "{{now}}"
+}'></textarea>
+          <small>Leave empty for static body. Available: {{extracted.*}}, {{vars.*}}, {{request.*}}, {{uuid}}, {{now}}, {{timestamp}}, {{random min max}}</small>
+        </div>
+
+        <div class="collapsible" id="webhookCollapsible">
+          <div class="collapsible-header" onclick="toggleCollapsible('webhookCollapsible')">
+            <span>Webhook Configuration (Optional)</span>
+            <span>▼</span>
+          </div>
+          <div class="collapsible-body">
+            <div class="checkbox-group" style="margin-bottom: 16px;">
+              <input type="checkbox" id="webhookEnabled">
+              <label for="webhookEnabled">Enable Webhook</label>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Webhook URL</label>
+                <input type="text" id="webhookUrl" placeholder="https://api.example.com/callback">
+              </div>
+              <div class="form-group">
+                <label>Method</label>
+                <select id="webhookMethod">
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="PATCH">PATCH</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Webhook Delay (ms)</label>
+              <input type="number" id="webhookDelayMs" value="0" placeholder="e.g., 10000 for 10 seconds">
+              <small>Delay before sending webhook after response</small>
+            </div>
+            <div class="form-group">
+              <label>Webhook Headers (JSON)</label>
+              <textarea id="webhookHeaders" style="min-height: 60px;" placeholder='{"Authorization": "Bearer xxx"}'></textarea>
+            </div>
+            <div class="form-group">
+              <label>Webhook Body Template (Handlebars)</label>
+              <textarea id="webhookBodyTemplate" placeholder='{
+  "status": "completed",
+  "originalRequest": {{json request}},
+  "processedAt": "{{now}}"
+}'></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeStubModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveStub()">Save Stub</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+    let mocks = [];
+    let currentMockId = null;
+    let currentStubs = [];
+    let currentVariables = {};
+    let currentDefaultHeaders = {};
+    let editingStubIndex = -1;
+
+    async function fetchMocks() {
+      try {
+        const res = await fetch(`${API_URL}/mocks`);
+        mocks = await res.json();
+        renderMocks();
+        document.getElementById('dbStatus').className = 'status-dot green';
+      } catch (e) {
+        document.getElementById('dbStatus').className = 'status-dot red';
+      }
+    }
+
+    async function checkStatus() {
+      try {
+        const res = await fetch(`${API_URL}/status`);
+        document.getElementById('dbStatus').className = res.ok ? 'status-dot green' : 'status-dot red';
+      } catch (e) {
+        document.getElementById('dbStatus').className = 'status-dot red';
+      }
+    }
+
+    function renderMocks() {
+      const list = document.getElementById('mockList');
+      document.getElementById('mockCount').textContent = `${mocks.length} mocks`;
+
+      if (mocks.length === 0) {
+        list.innerHTML = '<div class="empty-state">No mocks configured. Click "New Mock" to create one.</div>';
+        return;
+      }
+
+      list.innerHTML = mocks.map(mock => {
+        const hasDelay = mock.stubs?.some(s => s.responses?.[0]?.delayMs > 0);
+        const hasWebhook = mock.stubs?.some(s => s.responses?.[0]?.webhook?.enabled);
+        const hasTemplates = mock.stubs?.some(s => s.responses?.[0]?.bodyTemplate);
+        return `
+          <div class="mock-item">
+            <div class="mock-info">
+              <h3>${mock.name}</h3>
+              <p>${mock.description || 'No description'} • ${mock.stubs?.length || 0} stubs</p>
+              <p style="font-size:11px;color:#888;margin-top:4px;">Base URL: <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;">http://localhost:${mock.port}</code></p>
+            </div>
+            <div class="mock-meta">
+              <span class="badge badge-port">:${mock.port}</span>
+              ${hasTemplates ? '<span class="badge" style="background:#e8f5e9;color:#2e7d32;">Dynamic</span>' : ''}
+              ${hasDelay ? '<span class="badge badge-delay">Delayed</span>' : ''}
+              ${hasWebhook ? '<span class="badge badge-webhook">Webhook</span>' : ''}
+              <span class="badge ${mock.enabled ? 'badge-enabled' : 'badge-disabled'}">${mock.enabled ? 'Enabled' : 'Disabled'}</span>
+              <div class="actions">
+                <button class="btn btn-sm btn-secondary" onclick="toggleMock('${mock._id}')">${mock.enabled ? 'Disable' : 'Enable'}</button>
+                <button class="btn btn-sm btn-primary" onclick="editMock('${mock._id}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteMock('${mock._id}')">Delete</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openCreateModal() {
+      currentMockId = null;
+      currentStubs = [];
+      currentVariables = {};
+      currentDefaultHeaders = {};
+      document.getElementById('modalTitle').textContent = 'New Mock Configuration';
+      document.getElementById('mockName').value = '';
+      document.getElementById('mockPort').value = '';
+      document.getElementById('mockProtocol').value = 'http';
+      document.getElementById('mockEnabled').value = 'true';
+      document.getElementById('mockDescription').value = '';
+      document.getElementById('mockVariables').value = '{}';
+      document.getElementById('mockDefaultHeaders').value = '{"Content-Type": "application/json"}';
+      renderStubs();
+      updateJsonView();
+      switchTab('basic');
+      document.getElementById('mockModal').classList.add('active');
+    }
+
+    function editMock(id) {
+      const mock = mocks.find(m => m._id === id);
+      if (!mock) return;
+
+      currentMockId = id;
+      currentStubs = JSON.parse(JSON.stringify(mock.stubs || []));
+      currentVariables = mock.variables || {};
+      currentDefaultHeaders = mock.defaultHeaders || {};
+      document.getElementById('modalTitle').textContent = 'Edit Mock Configuration';
+      document.getElementById('mockName').value = mock.name;
+      document.getElementById('mockPort').value = mock.port;
+      document.getElementById('mockProtocol').value = mock.protocol;
+      document.getElementById('mockEnabled').value = String(mock.enabled);
+      document.getElementById('mockDescription').value = mock.description || '';
+      document.getElementById('mockVariables').value = JSON.stringify(mock.variables || {}, null, 2);
+      document.getElementById('mockDefaultHeaders').value = JSON.stringify(mock.defaultHeaders || {}, null, 2);
+      renderStubs();
+      updateJsonView();
+      switchTab('basic');
+      document.getElementById('mockModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('mockModal').classList.remove('active');
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+      document.getElementById('basicTab').style.display = tab === 'basic' ? 'block' : 'none';
+      document.getElementById('variablesTab').style.display = tab === 'variables' ? 'block' : 'none';
+      document.getElementById('stubsTab').style.display = tab === 'stubs' ? 'block' : 'none';
+      document.getElementById('jsonTab').style.display = tab === 'json' ? 'block' : 'none';
+      if (tab === 'json') updateJsonView();
+    }
+
+    function toggleCollapsible(id) {
+      document.getElementById(id).classList.toggle('open');
+    }
+
+    function getFormData() {
+      let vars = {}, headers = {};
+      try { vars = JSON.parse(document.getElementById('mockVariables').value || '{}'); } catch(e) {}
+      try { headers = JSON.parse(document.getElementById('mockDefaultHeaders').value || '{}'); } catch(e) {}
+
+      return {
+        name: document.getElementById('mockName').value,
+        port: parseInt(document.getElementById('mockPort').value),
+        protocol: document.getElementById('mockProtocol').value,
+        enabled: document.getElementById('mockEnabled').value === 'true',
+        description: document.getElementById('mockDescription').value,
+        variables: vars,
+        defaultHeaders: headers,
+        stubs: currentStubs
+      };
+    }
+
+    function updateJsonView() {
+      document.getElementById('jsonConfig').value = JSON.stringify(getFormData(), null, 2);
+    }
+
+    function renderStubs() {
+      const list = document.getElementById('stubsList');
+      if (currentStubs.length === 0) {
+        list.innerHTML = '<div class="empty-state" style="padding: 40px;">No stubs. Add a stub to define mock responses.</div>';
+        return;
+      }
+      list.innerHTML = currentStubs.map((stub, i) => {
+        const pred = stub.predicates?.[0] || {};
+        const resp = stub.responses?.[0] || {};
+        const method = pred.equals?.method || pred.matches?.method || 'ANY';
+        const path = pred.equals?.path || pred.matches?.path || '/*';
+        const hasTemplate = resp.bodyTemplate;
+        const hasDelay = resp.delayMs > 0;
+        const hasWebhook = resp.webhook?.enabled;
+        return `
+          <div class="stub-item">
+            <div class="stub-header">
+              <h4>${stub.name || `Stub ${i + 1}`}: ${method} ${path}</h4>
+              <div class="actions">
+                <button class="btn btn-sm btn-secondary" onclick="editStub(${i})">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="removeStub(${i})">Remove</button>
+              </div>
+            </div>
+            <div class="stub-badges">
+              <span class="badge" style="background:#e0e0e0;color:#333;">${resp.statusCode || 200}</span>
+              ${hasTemplate ? '<span class="badge" style="background:#e8f5e9;color:#2e7d32;">Template</span>' : ''}
+              ${hasDelay ? `<span class="badge badge-delay">${resp.delayMs}ms delay</span>` : ''}
+              ${hasWebhook ? `<span class="badge badge-webhook">Webhook ${resp.webhook.delayMs ? `(${resp.webhook.delayMs}ms)` : ''}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addStub() {
+      editingStubIndex = -1;
+      document.getElementById('stubName').value = '';
+      document.getElementById('stubPredicates').value = JSON.stringify([
+        { "matches": { "method": "GET", "path": "/api/example/.*" } }
+      ], null, 2);
+      document.getElementById('stubExtractorPath').value = '/api/example/(\\d+)';
+      document.getElementById('stubStatusCode').value = '200';
+      document.getElementById('stubDelayMs').value = '0';
+      document.getElementById('stubContentType').value = 'application/json';
+      document.getElementById('stubBodyTemplate').value = `{
+  "id": "{{extracted.path1}}",
+  "message": "Success",
+  "requestId": "{{uuid}}",
+  "timestamp": "{{now}}"
+}`;
+      document.getElementById('webhookEnabled').checked = false;
+      document.getElementById('webhookUrl').value = '';
+      document.getElementById('webhookMethod').value = 'POST';
+      document.getElementById('webhookDelayMs').value = '0';
+      document.getElementById('webhookHeaders').value = '{}';
+      document.getElementById('webhookBodyTemplate').value = '';
+      document.getElementById('webhookCollapsible').classList.remove('open');
+      document.getElementById('stubModal').classList.add('active');
+    }
+
+    function editStub(index) {
+      editingStubIndex = index;
+      const stub = currentStubs[index];
+      const resp = stub.responses?.[0] || {};
+      const webhook = resp.webhook || {};
+
+      document.getElementById('stubName').value = stub.name || '';
+      document.getElementById('stubPredicates').value = JSON.stringify(stub.predicates || [], null, 2);
+      document.getElementById('stubExtractorPath').value = stub.extractors?.pathPattern || '';
+      document.getElementById('stubStatusCode').value = resp.statusCode || 200;
+      document.getElementById('stubDelayMs').value = resp.delayMs || 0;
+      document.getElementById('stubContentType').value = resp.headers?.['Content-Type'] || 'application/json';
+      document.getElementById('stubBodyTemplate').value = resp.bodyTemplate || (resp.body ? JSON.stringify(resp.body, null, 2) : '');
+      document.getElementById('webhookEnabled').checked = webhook.enabled || false;
+      document.getElementById('webhookUrl').value = webhook.url || '';
+      document.getElementById('webhookMethod').value = webhook.method || 'POST';
+      document.getElementById('webhookDelayMs').value = webhook.delayMs || 0;
+      document.getElementById('webhookHeaders').value = JSON.stringify(webhook.headers || {}, null, 2);
+      document.getElementById('webhookBodyTemplate').value = webhook.bodyTemplate || '';
+
+      if (webhook.enabled) {
+        document.getElementById('webhookCollapsible').classList.add('open');
+      } else {
+        document.getElementById('webhookCollapsible').classList.remove('open');
+      }
+      document.getElementById('stubModal').classList.add('active');
+    }
+
+    function closeStubModal() {
+      document.getElementById('stubModal').classList.remove('active');
+    }
+
+    function saveStub() {
+      try {
+        const predicates = JSON.parse(document.getElementById('stubPredicates').value);
+        const pathPattern = document.getElementById('stubExtractorPath').value;
+        const bodyTemplate = document.getElementById('stubBodyTemplate').value.trim();
+
+        let webhookHeaders = {};
+        try { webhookHeaders = JSON.parse(document.getElementById('webhookHeaders').value || '{}'); } catch(e) {}
+
+        const stub = {
+          name: document.getElementById('stubName').value,
+          predicates,
+          extractors: pathPattern ? { pathPattern } : {},
+          responses: [{
+            statusCode: parseInt(document.getElementById('stubStatusCode').value) || 200,
+            headers: { 'Content-Type': document.getElementById('stubContentType').value },
+            delayMs: parseInt(document.getElementById('stubDelayMs').value) || 0,
+            bodyTemplate: bodyTemplate || undefined,
+            webhook: document.getElementById('webhookEnabled').checked ? {
+              enabled: true,
+              url: document.getElementById('webhookUrl').value,
+              method: document.getElementById('webhookMethod').value,
+              delayMs: parseInt(document.getElementById('webhookDelayMs').value) || 0,
+              headers: webhookHeaders,
+              bodyTemplate: document.getElementById('webhookBodyTemplate').value
+            } : undefined
+          }]
+        };
+
+        if (editingStubIndex >= 0) {
+          currentStubs[editingStubIndex] = stub;
+        } else {
+          currentStubs.push(stub);
+        }
+        renderStubs();
+        updateJsonView();
+        closeStubModal();
+      } catch (e) {
+        alert('Invalid JSON: ' + e.message);
+      }
+    }
+
+    function removeStub(index) {
+      if (confirm('Remove this stub?')) {
+        currentStubs.splice(index, 1);
+        renderStubs();
+        updateJsonView();
+      }
+    }
+
+    async function saveMock() {
+      const jsonTab = document.getElementById('jsonTab').style.display !== 'none';
+      let data;
+
+      if (jsonTab) {
+        try {
+          data = JSON.parse(document.getElementById('jsonConfig').value);
+        } catch (e) {
+          alert('Invalid JSON: ' + e.message);
+          return;
+        }
+      } else {
+        data = getFormData();
+      }
+
+      if (!data.name || !data.port) {
+        alert('Name and Port are required');
+        return;
+      }
+
+      try {
+        const method = currentMockId ? 'PUT' : 'POST';
+        const url = currentMockId ? `${API_URL}/mocks/${currentMockId}` : `${API_URL}/mocks`;
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to save');
+        }
+
+        closeModal();
+        fetchMocks();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function deleteMock(id) {
+      if (!confirm('Delete this mock?')) return;
+      try {
+        await fetch(`${API_URL}/mocks/${id}`, { method: 'DELETE' });
+        fetchMocks();
+      } catch (e) {
+        alert('Error deleting mock');
+      }
+    }
+
+    async function toggleMock(id) {
+      try {
+        await fetch(`${API_URL}/mocks/${id}/toggle`, { method: 'PATCH' });
+        fetchMocks();
+      } catch (e) {
+        alert('Error toggling mock');
+      }
+    }
+
+    async function syncAll() {
+      try {
+        await fetch(`${API_URL}/sync`, { method: 'POST' });
+        alert('All mocks synced to Mountebank');
+        checkStatus();
+      } catch (e) {
+        alert('Error syncing mocks');
+      }
+    }
+
+    // Initialize
+    fetchMocks();
+    checkStatus();
+    setInterval(checkMountebank, 30000);
+  </script>
+</body>
+</html>

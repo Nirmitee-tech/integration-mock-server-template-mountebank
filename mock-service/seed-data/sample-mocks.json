@@ -1,0 +1,338 @@
+[
+  {
+    "name": "User Service",
+    "description": "User management API - CRUD operations",
+    "port": 10080,
+    "protocol": "http",
+    "enabled": true,
+    "variables": {
+      "serviceName": "UserService",
+      "version": "1.0.0",
+      "defaultStatus": "active"
+    },
+    "defaultHeaders": {
+      "Content-Type": "application/json",
+      "X-Service": "UserService"
+    },
+    "stubs": [
+      {
+        "name": "Get User by ID",
+        "predicates": [{"matches": {"method": "GET", "path": "/api/users/\\d+"}}],
+        "extractors": {"pathPattern": "/api/users/(\\d+)"},
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"userId\": \"{{extracted.path1}}\", \"name\": \"User {{extracted.path1}}\", \"email\": \"user{{extracted.path1}}@example.com\", \"phone\": \"+1-555-{{random 1000 9999}}\", \"status\": \"{{vars.defaultStatus}}\", \"createdAt\": \"2024-01-15T10:30:00Z\", \"requestId\": \"{{uuid}}\", \"timestamp\": \"{{now}}\"}"
+        }]
+      },
+      {
+        "name": "Get All Users",
+        "predicates": [{"equals": {"method": "GET", "path": "/api/users"}}],
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"users\": [{\"userId\": \"1001\", \"name\": \"John Doe\", \"email\": \"john@example.com\", \"status\": \"active\"}, {\"userId\": \"1002\", \"name\": \"Jane Smith\", \"email\": \"jane@example.com\", \"status\": \"active\"}, {\"userId\": \"1003\", \"name\": \"Bob Wilson\", \"email\": \"bob@example.com\", \"status\": \"inactive\"}], \"total\": 3, \"page\": 1, \"requestId\": \"{{uuid}}\"}"
+        }]
+      },
+      {
+        "name": "Create User",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/users"}}],
+        "responses": [{
+          "statusCode": 201,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 500,
+          "bodyTemplate": "{\"userId\": \"{{uuid}}\", \"name\": \"{{extracted.name}}\", \"email\": \"{{extracted.email}}\", \"phone\": \"{{extracted.phone}}\", \"status\": \"active\", \"message\": \"User created successfully\", \"createdAt\": \"{{now}}\"}"
+        }]
+      },
+      {
+        "name": "Update User",
+        "predicates": [{"matches": {"method": "PUT", "path": "/api/users/\\d+"}}],
+        "extractors": {"pathPattern": "/api/users/(\\d+)"},
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 300,
+          "bodyTemplate": "{\"userId\": \"{{extracted.path1}}\", \"name\": \"{{extracted.name}}\", \"email\": \"{{extracted.email}}\", \"status\": \"{{extracted.status}}\", \"message\": \"User updated successfully\", \"updatedAt\": \"{{now}}\"}"
+        }]
+      },
+      {
+        "name": "Delete User",
+        "predicates": [{"matches": {"method": "DELETE", "path": "/api/users/\\d+"}}],
+        "extractors": {"pathPattern": "/api/users/(\\d+)"},
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"userId\": \"{{extracted.path1}}\", \"message\": \"User deleted successfully\", \"deletedAt\": \"{{now}}\"}"
+        }]
+      }
+    ]
+  },
+  {
+    "name": "Order Service",
+    "description": "Order management API with webhook support",
+    "port": 10081,
+    "protocol": "http",
+    "enabled": true,
+    "variables": {
+      "currency": "USD",
+      "taxRate": 0.08
+    },
+    "defaultHeaders": {
+      "Content-Type": "application/json",
+      "X-Service": "OrderService"
+    },
+    "stubs": [
+      {
+        "name": "Get Orders by User",
+        "predicates": [{"matches": {"method": "GET", "path": "/api/orders/user/\\d+"}}],
+        "extractors": {"pathPattern": "/api/orders/user/(\\d+)"},
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"userId\": \"{{extracted.path1}}\", \"orders\": [{\"orderId\": \"ORD-{{random 10000 99999}}\", \"amount\": {{random 50 500}}.{{random 10 99}}, \"currency\": \"{{vars.currency}}\", \"status\": \"delivered\", \"createdAt\": \"2024-01-10T14:30:00Z\"}, {\"orderId\": \"ORD-{{random 10000 99999}}\", \"amount\": {{random 50 500}}.{{random 10 99}}, \"currency\": \"{{vars.currency}}\", \"status\": \"processing\", \"createdAt\": \"2024-01-18T09:15:00Z\"}], \"totalOrders\": 2, \"requestId\": \"{{uuid}}\"}"
+        }]
+      },
+      {
+        "name": "Get Order by ID",
+        "predicates": [{"matches": {"method": "GET", "path": "/api/orders/ORD-.*"}}],
+        "extractors": {"pathPattern": "/api/orders/(ORD-\\d+)"},
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"orderId\": \"{{extracted.path1}}\", \"userId\": \"{{random 1000 9999}}\", \"items\": [{\"productId\": \"PROD-001\", \"name\": \"Widget\", \"quantity\": 2, \"price\": 29.99}, {\"productId\": \"PROD-002\", \"name\": \"Gadget\", \"quantity\": 1, \"price\": 49.99}], \"subtotal\": 109.97, \"tax\": 8.80, \"total\": 118.77, \"currency\": \"{{vars.currency}}\", \"status\": \"delivered\", \"requestId\": \"{{uuid}}\"}"
+        }]
+      },
+      {
+        "name": "Create Order",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/orders"}}],
+        "responses": [{
+          "statusCode": 201,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 1000,
+          "bodyTemplate": "{\"orderId\": \"{{extracted.orderId}}\", \"userId\": \"{{extracted.userId}}\", \"items\": {{json extracted.items}}, \"amount\": {{extracted.amount}}, \"currency\": \"{{vars.currency}}\", \"status\": \"pending\", \"message\": \"Order created successfully\", \"createdAt\": \"{{now}}\", \"requestId\": \"{{uuid}}\"}"
+        }]
+      },
+      {
+        "name": "Update Order Status",
+        "predicates": [{"matches": {"method": "PATCH", "path": "/api/orders/ORD-.*"}}],
+        "extractors": {"pathPattern": "/api/orders/(ORD-\\d+)"},
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 500,
+          "bodyTemplate": "{\"orderId\": \"{{extracted.path1}}\", \"status\": \"{{extracted.status}}\", \"message\": \"Order status updated\", \"updatedAt\": \"{{now}}\"}"
+        }]
+      }
+    ]
+  },
+  {
+    "name": "Payment Service",
+    "description": "Payment processing with delays and webhooks",
+    "port": 10082,
+    "protocol": "http",
+    "enabled": true,
+    "variables": {
+      "gateway": "Stripe",
+      "currency": "USD"
+    },
+    "defaultHeaders": {
+      "Content-Type": "application/json",
+      "X-Service": "PaymentService"
+    },
+    "stubs": [
+      {
+        "name": "Process Payment",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/payments"}}],
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 2000,
+          "bodyTemplate": "{\"transactionId\": \"TXN-{{uuid}}\", \"orderId\": \"{{extracted.orderId}}\", \"amount\": {{extracted.amount}}, \"currency\": \"{{vars.currency}}\", \"gateway\": \"{{vars.gateway}}\", \"status\": \"completed\", \"cardLast4\": \"{{extracted.cardLast4}}\", \"processedAt\": \"{{now}}\", \"requestId\": \"{{uuid}}\"}",
+          "webhook": {
+            "enabled": false,
+            "url": "http://your-callback-url/webhook",
+            "method": "POST",
+            "delayMs": 5000,
+            "headers": {"Content-Type": "application/json"},
+            "bodyTemplate": "{\"event\": \"payment.completed\", \"transactionId\": \"TXN-{{uuid}}\", \"orderId\": \"{{extracted.orderId}}\", \"amount\": {{extracted.amount}}, \"timestamp\": \"{{now}}\"}"
+          }
+        }]
+      },
+      {
+        "name": "Get Payment Status",
+        "predicates": [{"matches": {"method": "GET", "path": "/api/payments/TXN-.*"}}],
+        "extractors": {"pathPattern": "/api/payments/(TXN-.+)"},
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"transactionId\": \"{{extracted.path1}}\", \"status\": \"completed\", \"gateway\": \"{{vars.gateway}}\", \"checkedAt\": \"{{now}}\"}"
+        }]
+      },
+      {
+        "name": "Refund Payment",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/payments/refund"}}],
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 1500,
+          "bodyTemplate": "{\"refundId\": \"REF-{{uuid}}\", \"transactionId\": \"{{extracted.transactionId}}\", \"amount\": {{extracted.amount}}, \"reason\": \"{{extracted.reason}}\", \"status\": \"processed\", \"processedAt\": \"{{now}}\"}"
+        }]
+      }
+    ]
+  },
+  {
+    "name": "Product Service",
+    "description": "Product catalog API",
+    "port": 10083,
+    "protocol": "http",
+    "enabled": true,
+    "variables": {
+      "defaultCurrency": "USD"
+    },
+    "defaultHeaders": {
+      "Content-Type": "application/json",
+      "X-Service": "ProductService"
+    },
+    "stubs": [
+      {
+        "name": "Get Product by ID",
+        "predicates": [{"matches": {"method": "GET", "path": "/api/products/PROD-.*"}}],
+        "extractors": {"pathPattern": "/api/products/(PROD-\\d+)"},
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"productId\": \"{{extracted.path1}}\", \"name\": \"Product {{extracted.path1}}\", \"description\": \"High quality product\", \"price\": {{random 10 200}}.99, \"currency\": \"{{vars.defaultCurrency}}\", \"stock\": {{random 0 100}}, \"category\": \"Electronics\", \"requestId\": \"{{uuid}}\"}"
+        }]
+      },
+      {
+        "name": "Search Products",
+        "predicates": [{"equals": {"method": "GET", "path": "/api/products"}}],
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"products\": [{\"productId\": \"PROD-001\", \"name\": \"Wireless Headphones\", \"price\": 79.99, \"stock\": 45}, {\"productId\": \"PROD-002\", \"name\": \"Smart Watch\", \"price\": 199.99, \"stock\": 23}, {\"productId\": \"PROD-003\", \"name\": \"Bluetooth Speaker\", \"price\": 49.99, \"stock\": 67}], \"total\": 3, \"page\": 1, \"query\": \"{{extracted.q}}\", \"requestId\": \"{{uuid}}\"}"
+        }]
+      },
+      {
+        "name": "Create Product",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/products"}}],
+        "responses": [{
+          "statusCode": 201,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 300,
+          "bodyTemplate": "{\"productId\": \"PROD-{{random 1000 9999}}\", \"name\": \"{{extracted.name}}\", \"description\": \"{{extracted.description}}\", \"price\": {{extracted.price}}, \"stock\": {{extracted.stock}}, \"category\": \"{{extracted.category}}\", \"message\": \"Product created\", \"createdAt\": \"{{now}}\"}"
+        }]
+      }
+    ]
+  },
+  {
+    "name": "Auth Service",
+    "description": "Authentication and authorization API",
+    "port": 10084,
+    "protocol": "http",
+    "enabled": true,
+    "variables": {
+      "tokenExpiry": 3600,
+      "issuer": "mock-auth-service"
+    },
+    "defaultHeaders": {
+      "Content-Type": "application/json",
+      "X-Service": "AuthService"
+    },
+    "stubs": [
+      {
+        "name": "Login",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/auth/login"}}],
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 500,
+          "bodyTemplate": "{\"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.{{uuid}}\", \"refreshToken\": \"refresh_{{uuid}}\", \"tokenType\": \"Bearer\", \"expiresIn\": {{vars.tokenExpiry}}, \"user\": {\"userId\": \"{{uuid}}\", \"email\": \"{{extracted.email}}\", \"role\": \"user\"}, \"issuedAt\": \"{{now}}\"}"
+        }]
+      },
+      {
+        "name": "Refresh Token",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/auth/refresh"}}],
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 200,
+          "bodyTemplate": "{\"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.{{uuid}}\", \"tokenType\": \"Bearer\", \"expiresIn\": {{vars.tokenExpiry}}, \"issuedAt\": \"{{now}}\"}"
+        }]
+      },
+      {
+        "name": "Validate Token",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/auth/validate"}}],
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 100,
+          "bodyTemplate": "{\"valid\": true, \"userId\": \"{{uuid}}\", \"email\": \"user@example.com\", \"role\": \"user\", \"expiresAt\": \"2024-12-31T23:59:59Z\"}"
+        }]
+      },
+      {
+        "name": "Logout",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/auth/logout"}}],
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"message\": \"Logged out successfully\", \"timestamp\": \"{{now}}\"}"
+        }]
+      }
+    ]
+  },
+  {
+    "name": "Notification Service",
+    "description": "Notification API with webhook callbacks",
+    "port": 10085,
+    "protocol": "http",
+    "enabled": true,
+    "variables": {
+      "defaultChannel": "email"
+    },
+    "defaultHeaders": {
+      "Content-Type": "application/json",
+      "X-Service": "NotificationService"
+    },
+    "stubs": [
+      {
+        "name": "Send Notification",
+        "predicates": [{"equals": {"method": "POST", "path": "/api/notifications"}}],
+        "responses": [{
+          "statusCode": 202,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 300,
+          "bodyTemplate": "{\"notificationId\": \"NOTIF-{{uuid}}\", \"userId\": \"{{extracted.userId}}\", \"channel\": \"{{extracted.channel}}\", \"type\": \"{{extracted.type}}\", \"message\": \"{{extracted.message}}\", \"status\": \"queued\", \"queuedAt\": \"{{now}}\"}",
+          "webhook": {
+            "enabled": false,
+            "url": "http://your-callback-url/notification-status",
+            "method": "POST",
+            "delayMs": 10000,
+            "headers": {"Content-Type": "application/json"},
+            "bodyTemplate": "{\"event\": \"notification.delivered\", \"notificationId\": \"NOTIF-{{uuid}}\", \"userId\": \"{{extracted.userId}}\", \"deliveredAt\": \"{{now}}\"}"
+          }
+        }]
+      },
+      {
+        "name": "Get Notification Status",
+        "predicates": [{"matches": {"method": "GET", "path": "/api/notifications/NOTIF-.*"}}],
+        "extractors": {"pathPattern": "/api/notifications/(NOTIF-.+)"},
+        "responses": [{
+          "statusCode": 200,
+          "headers": {"Content-Type": "application/json"},
+          "delayMs": 0,
+          "bodyTemplate": "{\"notificationId\": \"{{extracted.path1}}\", \"status\": \"delivered\", \"deliveredAt\": \"{{now}}\"}"
+        }]
+      }
+    ]
+  }
+]
