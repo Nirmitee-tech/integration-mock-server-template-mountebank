@@ -257,3 +257,7 @@ curl -X POST http://localhost:3001/api/sync
 ```bash
 docker logs -f mock-backend
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
